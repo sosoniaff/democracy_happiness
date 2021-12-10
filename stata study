@@ -1,0 +1,852 @@
+* ------------------------------------------ SRQM Assignment ----------------
+
+ * TOPIC: The impact of regime type on average national levels of well-being 
+
+ * DATA:   Quality of Government (2016)
+ 
+ * DATE:   09 October 2021
+
+* SUMMARY
+
+* In our research, we would like to investigate the variation of people's perceived well-being with respect to different national regime types. 
+ 
+ * HYPOTHESES
+ 
+ * - (H1): The more democratic the regime type is, the happier the citizens are
+
+ * - (H2): Happiness increases when citizens have more rights
+
+*  - (H3): Happiness increases when GDP is higher but at comparable levels of GDP, individuals are happier where they have stronger access to citizens rights 
+
+         
+* ----------------------------------------------------------------------------- */
+
+* ====================
+* = DATA EXPLORATION =
+* ====================
+
+* Load QOG 2016 dataset.
+use data/qog2016, clear
+
+* Summary of variables used in this research design.
+d whr_hap wel_regtype wel_citrig wdi_gdppccur undp_hdi hf_corrupt
+
+* Dependent variable: National Average Happiness 
+* ----------------------------------------------------------------------------
+
+* MEASURES -- National-level average scores for subjective well-being
+* CODEBOOK -- QOG 2016, page 858-859
+
+d whr_hap
+
+* We rename the variable 'happiness'. 
+rename whr_hap (happiness)
+
+* Since the DV is continuous, we use the -summarize- command to describe it.
+su happiness, d 
+
+* We look at the summary statistics (number of observations, mean, standard deviation, minimum and maximum).  
+tabstat happiness, s(n mean sd min max)
+
+* To check its distribution, we create a histogram with normal distribution superimposed. 
+hist happiness, percent normal name(happiness, replace)
+  
+*The distribution of the variable looks quite symmetrical. However, if we look at the exact values of the mean and the median, we observe that the mean is slightly higher than the median, which means that the distribution is slightly positively skewed. 
+tabstat happiness, s(mean median)
+
+* Let's now check the percentage of countries for which our DV is missing, by creating a 'missing values' dummy.
+gen dv_missing = mi(happiness)
+tab dv_missing
+
+* We can observe that we are missing observations for 21.73% of countries. This share is quite significant, but not to the point of invalidating the worldwide representativeness of the research. 
+
+*Let's check the exact countries that are missing. For a list of the 41 missing  countries: 
+li cname happiness if missing(happiness)
+
+* We can observe that missing values concern very small or island countries, which presumably do not host a lot of the world population. 
+
+*To show this, let's create a new variable that only comprises observations on the population for the countries that are missing from our dependent variable.  
+gen pop_DV_missing = . 
+
+replace pop_DV_missing = wdi_pop if mi(wdi_pop, happiness)
+
+*Check its composition. 
+su pop_DV_missing 
+
+*Check that the variable for the total world population is still unvaried. 
+su wdi_pop 
+
+*Now we calculate the sum of the population living in the countries that would be excluded from our sample if we kept happiness as our DV. 
+total pop_DV_missing 
+
+*Now let's find the sum of the total population. 
+total wdi_pop 
+
+*Now let's take the results of the last two calculations and find out what percentage of the total population lives in these countries.  
+display 100*8.33e+07/7.05e+09
+
+*This shows that excluding the countries that are represented by our DV variable would only exclude less than 1.2% of the total world population. This corroborates our intuition that the missing countries are small and not very populous, therefore reinforcing our confidence in the representativeness of our sample. 
+
+*We proceed to delete the missing observations. 
+drop if mi(happiness)
+
+* Independent Variables 
+*--------------------------------
+*IV (1) --- Regime Type 
+*------------------------------
+
+*MEASURES -- the combination of personal autonomy rights and political participation 
+*CODEBOOK -- QOG 2016, page 852
+
+d wel_regtype
+
+*Since the IV is categorical, we use the -frequency- command to describe it.
+fre wel_regtype 
+
+*We can summarise the national levels of subjective wellbeing for each value of regime type 
+bys wel_regtype: su happiness 
+
+*Note that there are only 187 observations for this IV. As a consequence, our country sample will be restricted - increasing the number of non-missing values for all variables of interest 
+
+*IV (2) -- Citizens Rights  
+*-------------------------------
+
+*MEASURES -- citizens rights as the presence of respecting both the right to politically participate in society and the right to personal autonomy 
+*CODEBOOK -- QOG 2016, page 842
+
+d wel_citrig 
+
+*Since the DV is continuous, we use the -summarize- command to describe it.
+su wel_citrig, d 
+
+*To check its distribution, we create a histogram with a normal distribution superimposed. 
+hist wel_citrig, normal name(wel_citrig, replace)
+
+*The IV is very skewed, which is indicative of many other country level indicators. We will fix this later on. 
+
+*Highlight that, once again, the variable has missing values, meaning that the sample of countries for which we have all variables measured will decrease again.
+
+*IV (3) --  Human Development Index 
+*-------------------------------------------------
+
+*MEASURES -- the average achievements in countries based on core dimensions of human development. These include: a long and healthy life, as measured by life expectancy at birth; knowledge, as measured by the adult literacy rate and the combined gross enrolment ratio for primary, secondary and tertiary schools; and a decent standard of living, as measured by GDP per capita in purchasing power parity (PPP) US dollars.
+
+*CODEBOOK -- QOG 2016, page 583
+
+d undp_hdi
+
+*Since the DV is continuous, we use the -summarize- command to describe it.
+su undp_hdi, d 
+
+*To check its distribution, we create a histogram with a normal distribution superimposed. 
+hist undp_hdi, normal name(undp_hdi, replace)
+
+*The IV is very skewed, which is indicative of many other country level indicators. We will fix this later on. 
+
+*Underscore that, once again, the variable has missing values, meaning that the sample of countries for which we have all variables measured will decrease again.
+
+*IV (4) -- Freedom from Corruption
+*---------------------------------------------
+
+*MEASURES -- the level of corruption in 152 countries, to determine the freedom from corruption scores of countries that are also listed in the Index of Economic Freedom.
+
+*CODEBOOK -- QOG 2016, page 326
+
+d hf_corrupt
+
+*Since the DV is continuous, we use the -summarize- command to describe it.
+su hf_corrupt, d 
+
+*To check its distribution, we create a histogram with a normal distribution superimposed. 
+hist hf_corrupt, normal name(hf_corrupt, replace)
+
+*The IV is very skewed, which is indicative of many other country level indicators. We will fix this later on. 
+
+*Flag that, once again, the variable has missing values, meaning that the sample of countries for which we have all variables measured will decrease again.
+
+*IV (5) -- GDP per capita 
+*-------------------------------
+
+*MEASURES -- the sum of gross value added by all resident producers in the economy plus any product taxes and minus any subsidies not included in the value of the products
+
+*CODEBOOK -- QOG 2016, page 683
+
+d wdi_gdppccur
+
+*Since the DV is continuous, we use the -summarize- command to describe it.
+su wdi_gdppccur, d 
+
+*To check its distribution, we create a histogram with a normal distribution superimposed. 
+hist wdi_gdppccur, normal name(wdi_gdppccur, replace)
+
+*The IV is very skewed, which is indicative of many other country level indicators. We will fix this later on. 
+
+*Underline that, once again, the variable has missing values, meaning that the sample of countries for which we have all variables measured will decrease again.
+
+* Missing values assessment
+* ------------------------------------
+
+* As our project uses country-level data, we used the `freq' option to show the missing data 
+misstable pat happiness wel_regtype wel_citrig undp_hdi hf_corrupt wdi_gdppccur, freq 
+
+*The results demonstrate that we will be forced to ignore 47 observations. As a result, the representativeness of our study will be limited. We will explore how below. 
+
+*Let's understand the countries that are in the entire dataset 
+tab cname 
+
+*Let's now compare the distribution with our `non missing data' country sample 
+tab cname if !mi(happiness, wel_regtype, wel_citrig, undp_hdi, hf_corrupt, wdi_gdppccur)
+
+*Let's create a dummy that we can use to cross-tabulate variables which will consequently allow us to understand the bias in our sample 
+gen full_vars = !mi(happiness, wel_regtype, wel_citrig, undp_hdi, hf_corrupt, wdi_gdppccur) 
+
+*Let's cross-tabulate variables to now understand if the sample shows serious bias in reference to the entire of the QOG dataset 
+tab cname full_vars, col
+
+* Finalising the dataset 
+*-----------------------------
+
+*Finalising the dataset by deleting observations with missing data 
+drop if mi(happiness, wel_regtype, wel_citrig, undp_hdi, hf_corrupt, wdi_gdppccur) 
+
+*Let's conduct a final count 
+count 
+
+
+* Let's further analyse our DV.
+*
+* ------------------------ Normality tests ---------------------------------
+*
+* Let's check if the distribution of our DV (which is happiness) approaches normality, first through visual assessment
+
+hist happiness, bin(15) normal kdensity kdenopts(lp(dash) lc(black) bw(1.5)) note ("Normal distribution (red line) and kernel density (black dashes).") name(happiness, replace)
+
+* The distribution of our DV is not obviously asymmetrical, which is good news. In order to verify this statement, we can verify deviations from symmetry. 
+
+symplot happiness, ti("Symmetry plot") name(happiness_sym, replace)
+
+* There is a slight deviation from symmetry, so our distribution is not perfectly normal. We can verify it through an analysis of the correspondence between our DV distribution and a normal distribution. 
+
+qnorm happiness, ti("Normal quantile plot") name (happiness_quantnormal, replace)
+
+* Even if our distribution's quantiles don't match perfectly with the normal distribution's quantiles, they still match pretty well, since almost all the plots are on, or very close to, the red line. 
+* Let's see if formal assessment confirms that we have a distribution very close to normality.
+
+su happiness, d
+
+* Skewness is 0.19, i.e. really close to 0. It confirms that our distribution is a quasi-normal one, even if our kurtosis value could approach 3 even more, since it is only 2.22. 
+* Would a "log transformation" be useful in that case ? 
+
+gladder happiness, name(gladder, replace)
+
+* The log transformation is not obviously more convenient at first sight. We need to further analyze the log variable. First, let's create it properly. 
+
+gen loghappiness = ln(happiness)
+la var loghappiness "Happiness (log units)"
+
+* Now let's compare the initial variable's and the logged variable's skewness and kurtosis. 
+
+tabstat happiness loghappiness, s(n sk kurtosis min max) c(s)
+
+* The kurtosis value is better for the logged variable because 2.43 is closer to 3 than 2.2. But on the other hand, the skewness value is better for the initial variable because 0.19 is closer to 0 than -0.22.
+
+hist loghappiness, normal name(loghappiness, replace)
+
+* In addition, the log-happiness histogram does not really show some improvement towards normality compared to the initial happiness histogram. 
+* Thus, there is no real need to replace the initial variable with the logged one, they are almost equivalent to each other, so we will just keep working with our initial DV.
+
+
+* ----------------------- Let's explore our hypothesis -----------------------
+
+* First, let's split our DV into 6 categories, so it is easier to manipulate.
+
+gen happiness6:happiness6 = irecode(happiness, 0, 3.5, 4.5, 5.5, 6.5, 7.5, .)
+la var happiness6 "Happiness(categories)"
+la def happiness6 1 "Unhappy" 2 "Quite unhappy" 3 "Neither unhappy nor happy" 4 "Quite happy" 5 "Happy" 6 "Very happy", replace
+
+*-----------------------------------------------
+* Hypothesis n°1 : The more democratic the regime type is, the happier individuals are
+* IV : Regime type : wel_regtype
+* First, let's cross tabulate happiness and regime type to have an initial understanding of the correlation between these two variables.
+ 
+tab happiness6 wel_regtype
+ 
+* At first sight, our hypothesis seems to be confirmed. Let's verify it with a graph.
+
+gr dot happiness6, over(wel_regtype) ytitle("Level of Happiness") name(happiness_and_regime, replace)
+
+* We can also plot happiness groups for each regime type.
+ 
+spineplot happiness6 wel_regtype, scheme(burd6) name(happiness_regime, replace)
+ 
+* Now, let's compare the mean with 95% confidence intervals of happiness across categorical citizens rights.
+ 
+tab wel_regtype, su(happiness)
+*
+bys wel_regtype: ci means happiness
+ 
+* Our confidence intervals overlap.... 
+* Let's create a dummy.
+ 
+recode wel_regtype (1/3  = 0 "Autocracy") (4 = 1 "Democracy") (else = .), gen(regime)
+ 
+* Let's check the confidence intervals with our dummy. 
+ 
+bys regime: ci means happiness
+ 
+* The confidence intervals don't overlap anymore, so we can keep all our values thanks to the dummy…
+ 
+*----------------------------------------------- 
+* Hypothesis n°2 :  Happiness increases when individuals have stronger access to citizens rights
+ 
+* IV : CITIZENS RIGHTS : wel_citrig. 
+* Let's split the citizens rights variable into 4 categories, and rename each category
+ 
+gen civ_rights4:civ_rights4 = irecode(wel_citrig, -0.1, 0.25, 0.5, 0.75, .)
+la def civ_rights4 1 "Almost no citizen Rights" 2 "Poor Citizen Rights" 3 "Some citizen rights" 4 "Strong citizen rights", replace
+ 
+* Now, let's cross tabulate happiness and citizens rights to have a first idea of the correlation between these two variables.
+ 
+tab happiness6 civ_rights4
+ 
+* Let's now do a graph.
+
+gr dot happiness6, over(civ_rights4) ytitle("Level of Happiness") name(happiness_and_citizenslrights, replace)
+ 
+* We can also plot happiness groups for each citizen rights category. 
+ 
+spineplot happiness6 civ_rights4, scheme(burd6) name(happiness_civrights, replace)
+ 
+* Now, let's compare the mean with 95% confidence intervals of happiness across categorical citizens rights.
+ 
+tab civ_rights4, su(happiness)
+*
+bys civ_rights4: ci means happiness
+ 
+* Confidence intervals for categories 1, 2 and 3 overlap... Let's try to redefine our categories with only 3 of them in order to get more precise confidence intervals and to be sure of our results. 
+ 
+gen civ_rights3:civ_rights3 = irecode(wel_citrig, -0.1, 0.5, 0.75, .)
+la var civ_rights3 "CitizenRigths(categories)"
+la def civ_rights3 1 "Poor citizen rights" 2 "Some citizen rights" 3 "Strong citizen rights", replace
+ 
+* Let's check our confidence intervals. 
+ 
+bys civ_rights3: ci means happiness
+ 
+* It worked, so let's keep 3 categories only. 
+ 
+ 
+*-----------------------------------------------
+* Hypothesis n°3  : Happiness increases with GDP, but at comparable levels of GDP, individuals are happier where they have stronger access to citizens rights 
+
+
+* IV : GDP per capita : wdi_gdppccur
+* Let's split the GDP variable into 3 categories, and rename each category
+ 
+gen wdi_gdppccur3:wdi_gdppccur3 = irecode(wdi_gdppccur, 0, 975, 11905, .)
+la def wdi_gdppccur3 1 "Low-income" 2 "Middle-income" 3 "High Income", replace
+ 
+* Now, let's cross tabulate happiness and GDP per capita to have a first idea of the correlation between these two variables.
+ 
+tab happiness6 wdi_gdppccur3
+ 
+* We can also plot happiness groups for each GDP per capita category. 
+ 
+spineplot happiness6 wdi_gdppccur3, scheme(burd6) name(happiness_GDP, replace)
+ 
+ 
+* Now, let's compare the mean with 95% confidence intervals of happiness across categorical GDP per capita.
+ 
+tab wdi_gdppccur3, su(happiness)
+*
+bys wdi_gdppccur3: ci means happiness
+ 
+* Now let's compare the impact of citizens rights on happiness for each category of GDP per capita. 
+ 
+hist happiness, bin(10) xline(27) by(wdi_gdppccur3 civ_rights3, cols(2) note("Vertical line at sample mean.") legend(off)) name(happiness_GDP_rights, replace)
+ 
+ 
+*Another way of visualizing this is through a dot chart. Here we can make inferences on our hypothesis more easily. 
+ 
+ gr dot happiness6, over(wdi_gdppccur3) over (civ_rights3) ytitle("Level of Happiness") 
+ 
+*This graph seems to confirm our hypothesis only partially. 
+*However there is a case that doesn't follow our hypothesis: high-income countries with low citizens' rights appear to be happier on average than those who also live in high-income countries but have medium citizens' rights. 
+ 
+*Before invalidating our hypothesis, let's further investigate by identifying the countries in question. 
+li cname wdi_gdppccur3 civ_rights3 wel_regtype
+ 
+*The countries are: the United Arab Emirates, Saudi Arabia, Libya, Venezuela, Bahrain, Russia, Kuwait, Brunei, Kazakhstan, Equatorial Guinea, Qatar, Oman, Israel and Singapore.  
+
+*It appears that the 14 countries of interest are all either pure autocracies or liberal autocracies (with the exception of Israel, which is a democracy). 
+*It is an interesting preliminary finding because most of these countries have been considered rentier states, according to the literature. We will delve into the possible implications of this finding at a later stage. 
+ 
+
+* ======================
+* = SIGNIFICANCE TESTS =
+* ======================
+* We now start to perform significance tests (t-test) to determine whether or not the difference in means of happiness observed is a statistically significant difference.
+  
+* IV--Regime Type 
+* ---------------
+*Check normality of the quantitative dependent variable 
+hist happiness, bin(15) normal name(regime, replace)
+	
+* We have a look at the independent (grouping) variable. 
+fre regime
+
+* We check whether there is a difference in the mean of happiness based on whether countries are in the group of "autocracy" or "democracy" (The subsequent t-test will allow us to check whether this difference is statistically significant)   
+bysort regime: summ happiness
+
+*Also visible through this graph. 
+gr dot happiness, over(regime) name(Regimes_Happiness, replace)
+	
+*First we do a graphical analysis, using the previously recoded DV in six categories to facilitate interpretation, using a spineplot.    
+spineplot happiness6 regime
+
+* It is even clearer if we create a dummy variable for happy/unhappy. 
+recode happiness (0/5 = 0 "Unhappy") (5/9 = 1 "Happy") (else =.), gen(happyppl)
+
+spineplot happyppl regime 
+	
+*Then we perform the t-test 
+ttest happiness, by(regime)
+
+*The two-tailed p-value is 0.0000, which means that the difference of means in happiness between autocracy and democracy is significantly different from zero (we reject the null hypothesis that there is no significant variation between the means of happiness of two groups of countries). 
+
+* IV--Citizens Rights  
+*-------------------------
+su wel_citrig 
+
+*Generate a dummy variable grouping together countries with low levels of citizens rights and high levels of citizens rights. Since the index goes from 0 to 1, we split the variable in two.  
+gen civ_rights2:civ_rights2 = irecode(wel_citrig, -0.1, 0.5, .)
+la var civ_rights2 "CitizenRigths(twocategories)"
+la def civ_rights2 1 "Poor citizen rights" 2 "Considerable citizen rights", replace
+
+*Look at the graphical representation. At first sight there is a large difference between the means of happiness of the category of "Poor citizen rights" and "Considerable citizen rights"
+gr dot happiness, over(civ_rights2) name(CitizenRights_Happiness, replace)
+
+* We check numerically the difference in the mean of happiness based on whether countries are in the group of "Poor citizen rights" and "Considerable citizen rights" 
+bysort civ_rights2: summ happiness
+
+
+* We perform the t-test 
+ttest happiness, by(civ_rights2)
+
+*The two-tailed p-value is 0.0000, which means that the difference of means in happiness between "poor citizens rights" and "considerable citizens rights" is significantly different from zero (we reject the null hypothesis that there is no significant variation). 
+
+*IV--GDP per capita 
+*-------------------------
+fre wdi_gdppccur3
+
+*Look at the categorical version of the dependent variable and recode according to either unhappy/neither happy nor unhappy/happy. 
+fre happiness6
+
+recode happiness6 (1/2  = 1 "Unhappy") (3 = 2 "Neither unhappy nor happy")(4/6 = 3 "Happy") (else = .), gen(happiness3)
+la var happiness3 "Happy/Unhappy/Indifferent"
+
+*Look at the new variable 
+fre happiness3
+
+* Spineplot 
+spineplot happiness3 wdi_gdppccur3
+
+*Now let's check the null hypothesis that there is no statistically significant difference in the proportions of the countries present in the categories "unhappy", "neither happy nor unhappy" and "happy" between the three different income levels. This requires a Chi-squared test. 
+* Chi-squared test.
+tab wdi_gdppccur3 happiness3, row nof 
+tab wdi_gdppccur3 happiness3, col nof  
+tab wdi_gdppccur3 happiness3, cell nof 
+tab wdi_gdppccur3 happiness3, chi2  
+
+* The p-value is 0.000, we can therefore reject the null hypothesis.
+* The association between GDP per capital and happiness is non-significant.
+
+* IV--Human Development Index 
+*-----------------------------------------
+su undp_hdi, d
+
+* Verify normality.
+hist undp_hdi, bin(10) normal name(HDI, replace)	
+* The variable is very skewed. We check whether a "log" version would improve its skewness. 
+gladder happiness, name(gladder, replace)
+
+*We generate the log variable of the Human Development Index. 
+gen loghdi = ln(undp_hdi)
+la var loghdi "HDI (log units)"
+
+*We check which version is better. 
+tabstat undp_hdi loghdi, s(n sk kurtosis min max) c(s)
+
+*Kurtosis is better in the log version, while skewness is better in the original one. 
+hist loghdi, normal name(loghdi, replace)
+
+* Recode the variable to a simpler form, based on the categorisation of the 2020 HDI report. 
+recode undp_hdi ///
+	(0.80000000/9.99999999 = 4 "Very high") ///
+	(0.70000000/0.79999999 = 3 "High") ///
+	(0.55000000/0.69999999 = 2 "Medium") ///
+	(0/0.54999999 = 0 "Low") ///
+	(else = .), gen(hdi_categories)
+la var hdi_categories "HDI Categories (Very high/High/Medium/Low)"
+fre hdi_categories
+
+*Now let's check the null hypothesis that there is no statistically significant difference in the proportions of the countries present in the categories "unhappy", "neither happy nor unhappy" and "happy" between the two levels of Human Development. 
+*Perform the Chi-squared test. 
+tab wdi_gdppccur3 happiness3, row nof 
+tab wdi_gdppccur3 happiness3, col nof  
+tab wdi_gdppccur3 happiness3, cell nof 
+tab hdi_categories happiness3, chi2  
+*The p-value is 0.000, we can therefore reject the null hypothesis. 
+ 
+
+* ======================
+* =====CORRELATION =====
+* ======================
+
+*To explore the possible correlations between our continuous variables we create a scatterplot matrix. 
+gr mat happiness undp_hdi wdi_gdppccur hf_corrupt wel_citrig,half name(gr_matrix, replace)
+*It is possible to observe many possible correlations, as well as patterns of variables that might need to be converted in logarithmic form (for GDP). 
+*It is also possible to see correlations numerically, and signal the ones that are statistically significant with a star. 
+pwcorr happiness undp_hdi wdi_gdppccur hf_corrupt wel_citrig, star(.05)
+*All of the possible correlations are statistically significant and positive (though their strength is variable - from 0.55 to 0.83). In what follows, we concentrate on the correlations between our DV and IVs.   
+
+* Citizens Rights and Happiness 
+*------------------------------------------
+scatter wel_citrig happiness 
+
+*Compute correlation. 
+pwcorr wel_citrig happiness, sig
+*There is a positive correlation between citizens rights and happiness, which is not medium in strength (0.58), but it is statistically significant. 
+
+
+* Corruption and Happiness 
+*-----------------------------------
+scatter hf_corrupt happiness 	
+*Compute correlation. 
+pwcorr hf_corrupt happiness, sig
+*There is a positive correlation between corruption and happiness, which is medium-high in strength (0.72), and also statistically significant. 
+
+
+* Human Development Index and Happiness
+*----------------------------------------------------------
+scatter undp_hdi happiness 
+
+*Compute correlation. 
+pwcorr undp_hdi happiness, sig
+*There is a positive correlation between HDI and happiness, which is medium-high in strength (0.77), and also statistically significant. 
+
+
+* GDP and Happiness  
+* ---------------------------
+scatter wdi_gdppccur happiness 	
+* We visualise the same variables with a logarithmic scale for GDP per capita.
+sc wdi_gdppccur happiness , ysc(log) 
+
+*We generate the logarithmic scale for GDP. 	
+gen logwdi_gdppccur = ln(wdi_gdppccur)
+la var logwdi_gdppccur "GDP per capita (log)"
+	
+*We verify. 
+sc logwdi_gdppccur happiness 
+
+* Obtain summary statistics.
+su logwdi_gdppccur happiness
+
+* Visual inspection of the relationship within the mean-mean quadrants.
+sc logwdi_gdppccur happiness, yline(8.6) xline(5.4) name(log_gdp_happiness, replace)
+
+* Verify inspection computationally.
+pwcorr wdi_gdppccur logwdi_gdppccur happiness, sig
+*There is a strong positive correlation between GDP and happiness (0.81), which is also statistically significant. 
+
+
+* --------------- Regression models for each of our hypothesis ---------------------
+ 
+* Hypothesis n°1: The more democratic the regime type is, the happier the citizens are
+
+* simple linear regression
+reg happiness6 regime
+
+* multiple linear regression
+reg happiness6 regime wdi_gdppccur3 civ_rights3 hf_corrupt
+* significance problem (p value is a bit high) ! 
+
+* Let’s adjust the model: observations clustered by country
+encode cname, gen(cid)
+reg happiness6 regime wdi_gdppccur3 civ_rights3  hf_corrupt, vce(cluster cid)
+*Still high.
+
+*Let’s do a logit model
+* Let’s check column percentages
+tab regime happyppl, col nof
+
+* now let’s do our logit model with odd ratios
+logit happyppl regime,  vce(cluster cid) or
+* First, our model is significant. Second, ceteris paribus, people living in democratic countries are four times more likely to feel happy. Though, it is to be noticed that regime type has only a small impact on happiness ( pseudo R2 = 0.09).  We can add some other values (our IVs) to confirm that idea. 
+
+logit happyppl regime civ_rights3 wdi_gdppccur3,  vce(cluster cid) or
+* the level of citizens rights is not significant anymore, p value is way too high. Let’s get rid of citizens rights in our equation
+
+logit happyppl regime wdi_gdppccur3,  vce(cluster cid) or
+* p value is still significant here but way less than when regime type IV was alone. Besides, we can see that GDP per capita is way more likely to explain happiness than the regime type of the country. It also explains why we had such a problem with significance in the multiple linear regression model. 
+
+
+
+
+* Hypothesis n°2: Happiness increases when citizens have more rights
+* simple linear regression
+reg happiness6 civ_rights3
+
+reg happiness6 i.civ_rights3
+
+* multiple linear regression
+reg happiness6 civ_rights3 regime wdi_gdppccur3, vce(cluster cid)
+* p value is a bit higher than 5% but not much, so we’ll consider our model as significant. So we can see there is a positive coefficient that shows a correlation : the more citizens have rights, the happier they are. The coefficient is a bit low though : citizen rights are not the main factor.
+
+reg happiness6 regime wdi_gdppccur3 civ_rights3  hf_corrupt, vce(cluster cid)
+* citizens are indeed not the main factor.
+
+vif
+* no VIF value > 10 or 1/VIF>0.1 = OK! 
+
+* Inspect residuals.
+predict r, resid
+
+* Diagnostic plots.
+hist r, normal
+
+* distribution of residuals
+rvfplot, yli(0)
+
+
+* Hypothesis n°3: Happiness increases when GDP is higher but at comparable levels of GDP, individuals are happier where they have stronger access to citizens rights 
+
+* multiple linear regression models
+reg happiness6 regime wdi_gdppccur3 civ_rights3  hf_corrupt, vce(cluster cid)
+
+reg happiness6 regime i.wdi_gdppccur3 i.civ_rights3  hf_corrupt, vce(cluster cid)
+*GDP has a high significance and the second highest coefficient. Then GDP is the most impactful variable we study  on happiness.  
+
+* Now let’s have a look at the impact of citizens rights on happiness for each category of GDP
+* Storing fitted values
+cap drop that
+predict yhat
+
+* Regression lines for the predicted values of each category of GDP
+
+tw (sc happiness6 civ_rights3 if wdi_gdppccur3 == 1, mc(blue)) (sc happiness6 civ_rights3 if wdi_gdppccur3 == 2, mc(red)) (sc happiness6 civ_rights3 if wdi_gdppccur3 == 3, mc(green)) (rcap yhat happiness6 civ_rights3 if wdi_gdppccur3 == 1, c(l) lc(red) lp(dash) msize(tiny)) (rcap yhat happiness6 civ_rights3 if wdi_gdppccur3 == 2, c(l) lc(blue) lp(dash) msize(tiny)) (rcap yhat happiness6 civ_rights3 if wdi_gdppccur3 == 2, c(l) lc(green) lp(dash) msize(tiny)) (sc yhat civ_rights3 if wdi_gdppccur3 == 1, c(l) ms(i) mc(blue) lc(blue)) (sc yhat civ_rights3 if wdi_gdppccur3 == 2, c(l) ms(i) mc(red) lc(red)) (sc yhat civ_rights3 if wdi_gdppccur3 == 3, c(l) ms(i) mc(green) lc(green)), legend(order(1 "Low GDP" 7 "Fitted values"  4 "Residuals" 2 "Medium GDP" 8 "Fitted values" 5 "Residuals" 3 “High GDP” 9 “Fitted values”  6 “Residuals”) row(2))
+
+* the graph is not extremely clear : for low-income countries, the regression line barely exists. 
+
+* Let’s do a simple regression model to measure the impact of citizens rights on happiness in each GDP’s category
+bys wdi_gdppccur3 : reg happiness6 civ_rights3
+
+* the results are not satisfying at all : no results for the low-income category, and for the high-income category, the model is not significant. 
+* We can’t validate the second part of our third hypothesis.
+
+* =========================
+* = REGRESSION DIAGNOSTICS =
+* =========================
+
+*----------------Regression diagnostics for each of our three hypothesis----------------
+
+* Hypothesis n°1: The more democratic the regime type is, the happier the citizens are
+
+*Let’s rerun the regression model 
+reg happiness6 regime wdi_gdppccur3 civ_rights3 hf_corrupt
+
+*Let’s store the predicted values 
+cap drop yhat
+predict yhat
+
+*(1) Standardised residuals 
+*--------------------------------------------
+
+*Let’s store the unstandardised (metric) residuals 
+cap drop r
+predict r, resid
+
+*Let’s assess the normality of the residuals 
+kdensity r, norm legend(off) ti("") name(diag_kdens, replace)
+
+*A visual assessment reveals that the residuals tend towards a normally distribution, most *residuals are therefore close to zero meaning that regression models previously *employed make sense 
+
+*Let’s understand the homoskedasticity of the residuals versus fitted values 
+rvfplot, yline(0) ms(i) mlab(ccodealp) name(diag_rvf, replace)
+
+*A further visual assessment suggests that the residuals are homoskedastic 
+
+*Let’s now store the standardised residuals 
+cap drop rsta
+predict rsta, rsta
+
+*Let’s understand the distribution of the standardised residuals 
+hist rsta, normal name(rsta, replace)
+
+*A visual assessment suggests that the standardised residuals, like those that were unstandardised, tend towards a normal distribution 
+
+*Let’s identify outliers beyond 2 standard deviation units 
+sc rsta yhat, yline(-2 2) || sc rsta yhat if abs(rsta) > 2, ylab(-3(1)3) mlab(ccodealp) legend(lab(2 "Outliers")) name(diag_rsta, replace)
+
+*The distribution of values is the same for the fitted values again reiterating that the regression models previously employed make sense in the previous analysis 
+
+*(2) Heteroskedasticity
+*--------------------------------------------
+
+*Let’s understand the homoskedasticity of the residuals of regime type to see how the *variable influences the model in the background of the main regression equation. 
+sc r regime, yline(0) mlab(ccodealp) legend(lab(2 "Outliers")) name(diag_regime1, replace)
+
+*It shows that some potential predictors are responsible for the overall sampling *distribution of the residuals, which means that the model is captive of a restricted *number of predictors.
+
+* Let’s visualise the trend in the error term as a LOWESS curve to show when
+* and how departures from homogenous variance occur throughout the sample as a
+* function of the predictor. 
+lowess rsta regime, bw(.5) yline(0) name(diag_regime2, replace)
+
+*The trend reflects the influence of outliers with reference to regime type. The error term of *the model shows a pattern in its standard errors as it deviates from the null y-axis at *values of the IV where the residuals are "clustered" above or below the expected mean of *zero
+
+* (3) Variance inflation and interaction terms
+* --------------------------------------------
+
+*Let’s use the Variance Inflation Factor (VIF) to understand the effects of specific *variables on one another. 
+vif
+
+*The low VIF suggests that there is a low correlation of variables among ideal conditions 
+
+* However, to confirm this, let’s add an interaction term 
+
+gen regimeXwdi_gdppccur3 = regime *wdi_gdppccur3
+la var regimeXwdi_gdppccur3 "regime *wdi_gdppccur3"
+
+* Regression model.
+reg happiness6 regime wdi_gdppccur3 civ_rights3 hf_corrupt
+
+* Regression model with an interaction term.
+reg happiness6 regime wdi_gdppccur3 civ_rights3 hf_corrupt regimeXwdi_gdppccur3
+
+*The relationship is statistically significant as p<0.005 suggesting that when making *predictions on the effect of regime type on happiness, GDP per capita must be taken into *account 
+
+*Marginal effects
+*-------------------------
+
+*Let's explore the results further by plotting the marginal effect of GDP per capita on *happiness:
+margins, at(wdi_gdppccur3 = (5.5(0.5)11.5)) 
+marginsplot, xla(minmax) recast(line) recastci(rarea) ciopts(col(*.6)) name(mfx_gdppc, replace)
+
+
+* Export regression results
+* -------------------------
+* Let’s export our model, with and without the interaction. 
+eststo clear
+eststo reg_1: reg happiness6 regime
+eststo reg_2: reg happiness6 regime wdi_gdppccur3 civ_rights3 hf_corrupt regimeXwdi_gdppccur3
+esttab reg_? using FINAL-REGRESSION-H1.rtf, constant label beta(2) se(2) mti("Without interaction" "With interaction") replace
+
+* Hypothesis n°2: Happiness increases when citizens have more rights
+
+*Let’s rerun the regression model 
+reg happiness6 civ_rights3 regime wdi_gdppccur3, vce(cluster cid)
+
+*Let’s store the predicted values 
+cap drop yhat
+predict yhat
+
+*(1) Standardised residuals 
+*--------------------------------------------
+
+*Let’s store the unstandardised (metric) residuals 
+cap drop r
+predict r, resid
+
+*Let’s assess the normality of the residuals 
+kdensity r, norm legend(off) ti("") name(diag_kdens, replace)
+
+*A visual assessment reveals that the residuals tend towards a normally distribution, most *residuals are therefore close to zero meaning that regression models previously *employed make sense 
+
+*Let’s understand the homoskedasticity of the residuals versus fitted values (DV)
+rvfplot, yline(0) ms(i) mlab(ccodealp) name(diag_rvf, replace)
+
+*A further visual assessment suggests that the residuals are homoskedastic. 
+
+*Furthermore, since the estimation is robust, an analysis of the standardised residuals *does not need to be conducted 
+
+*(2) Heteroskedasticity
+*--------------------------------------------
+
+*Let’s understand the homoskedasticity of the residuals of citizens rights to see how the *variable influences the model in the background of the main regression equation. 
+sc r civ_rights3, yline(0) mlab(ccodealp) legend(lab(2 "Outliers")) name(diag_rights1, replace)
+
+*It shows that some potential predictors are responsible for the overall sampling *distribution of the residuals, which means that the model is captive of a restricted *number of predictors.
+
+* (3) Variance inflation and interaction terms
+* --------------------------------------------
+
+*Let’s use the Variance Inflation Factor (VIF) to understand the effects of specific *variables on one another. 
+vif
+
+*The low VIF suggests that there is a low correlation of variables among ideal conditions  
+*meaning that it is possible to discern the effect of citizens rights on happiness in the *multiple regression model
+
+* However, to confirm this, let’s add an interaction term 
+gen civ_rights3Xwdi_gdppccur3 = civ_rights3*wdi_gdppccur3
+la var civ_rights3Xwdi_gdppccur3 "civ_rights3 *wdi_gdppccur3"
+
+* Regression model.
+reg happiness6 civ_rights3 regime wdi_gdppccur3, vce(cluster cid)
+
+* Regression model with an interaction term GDP
+reg happiness6 civ_rights3 regime wdi_gdppccur3 civ_rights3Xwdi_gdppccur3, vce(cluster cid) 
+
+*The relationship is statistically significant as p<0.005 suggesting that when making *predictions on the effect of citizens rights on happiness, GDP per capita must be taken *into account 
+
+*Marginal effects
+*-------------------------
+
+*Let's explore the results further by plotting the marginal effect of GDP per capita on *happiness:
+margins, at(wdi_gdppccur3 = (5.5(0.5)11.5)) 
+marginsplot, xla(minmax) recast(line) recastci(rarea) ciopts(col(*.6)) name(mfx_gdppc, replace)
+
+
+* Export regression results
+* -------------------------
+* Let’s export our model, with and without the interaction.
+eststo clear
+eststo reg_1: reg happiness6 civ_rights3 regime wdi_gdppccur3, vce(cluster cid)
+eststo reg_2: reg happiness6 civ_rights3 regime wdi_gdppccur3 civ_rights3Xwdi_gdppccur3, vce(cluster cid)
+esttab reg_? using FINAL-REGRESSION-H2.rtf, constant label beta(2) se(2) mti("Without interaction" "With interaction") replace
+
+* Hypothesis n°3: Happiness increases when GDP is higher but at comparable levels of GDP, individuals are happier where they have stronger access to citizens rights 
+
+*Let’s rerun the regression model 
+reg happiness6 regime wdi_gdppccur3 civ_rights3  hf_corrupt, vce(cluster cid)
+
+*Let’s store the predicted values 
+cap drop yhat
+predict yhat
+
+*(1) Standardised residuals 
+*--------------------------------------------
+
+*Let’s store the unstandardised (metric) residuals 
+cap drop r
+predict r, resid
+
+*Let’s assess the normality of the residuals 
+kdensity r, norm legend(off) ti("") name(diag_kdens, replace)
+
+*A visual assessment reveals that the residuals tend towards a normally distribution, most *residuals are therefore close to zero meaning that regression models previously *employed make sense 
+
+*Let’s understand the homoskedasticity of the residuals versus fitted values (DV)
+rvfplot, yline(0) ms(i) mlab(ccodealp) name(diag_rvf, replace)
+
+*A further visual assessment suggests that the residuals are homoskedastic 
+
+*Furthermore, since the estimation is robust, an analysis of the standardised residuals does not need to be conducted 
+
+*(2) Heteroskedasticity
+*--------------------------------------------
+
+*Let’s understand the homoskedasticity of the residuals of GDP to see how the *variable influences the model in the background of the main regression equation. 
+sc r wdi_gdppccur3, yline(0) mlab(ccodealp) legend(lab(2 "Outliers")) name(diag_regime1, replace)
+
+*It shows that some potential predictors are responsible for the overall sampling *distribution of the residuals, which means tha
